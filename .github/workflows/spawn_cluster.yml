@@ -21,7 +21,7 @@ jobs:
       run: |
         az aks create \
             --resource-group "${RESOURCE_GROUP}" \
-            --name "${{ secrets.CLUSTER_NAME }}" \
+            --name "k8s-temp" \
             --service-principal "${AZURE_APP_ID}"\
             --client-secret "${AZURE_APP_PASSWORD}" \
             --generate-ssh-keys
@@ -29,7 +29,7 @@ jobs:
       uses: azure/aks-set-context@v1
       with:
         creds: '${{ secrets.AZURE_CREDENTIALS }}'
-        cluster-name: ${{ secrets.CLUSTER_NAME }}
+        cluster-name: 'k8s-temp'
         resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
     - name: Deploy Niginx
       run: |
@@ -50,15 +50,15 @@ jobs:
         kubectl get service nginx-ingress-ingress-nginx-controller --namespace ingress-basic -w  \
         -o 'go-template={{with .status.loadBalancer.ingress}}{{range .}}{{.ip}}{{"\n"}}{{end}}{{.err}}{{end}}' 2>/dev/null \
         | head -n1
-    - name: Trigger h1_h1_passthrough test
-      uses: convictional/trigger-workflow-and-wait@v1.3.0
-      with:
-        owner: ballerina-platform
-        repo: ballerina-performance-cloud
-        github_token: ${{ secrets.BALLERINA_BOT_TOKEN }}
-        workflow_file_name: h1_h1_passthrough.yml
-        ref: main
-        waiting_interval: 600
-        inputs: '{}'
-        trigger_workflow: true
-        wait_workflow: true
+    # - name: Trigger h1_h1_passthrough test
+    #   uses: convictional/trigger-workflow-and-wait@v1.3.0
+    #   with:
+    #     owner: ballerina-platform
+    #     repo: ballerina-performance-cloud
+    #     github_token: ${{ secrets.BALLERINA_BOT_TOKEN }}
+    #     workflow_file_name: h1_h1_passthrough.yml
+    #     ref: main
+    #     waiting_interval: 600
+    #     inputs: '{}'
+    #     trigger_workflow: true
+    #     wait_workflow: true
