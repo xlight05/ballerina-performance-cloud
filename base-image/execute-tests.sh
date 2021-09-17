@@ -75,11 +75,6 @@ if [[ -z $scenario_name ]]; then
     exit 1
 fi
 
-if [[ -z $github_token ]]; then
-    echo "Please provide the scenario name."
-    exit 1
-fi
-
 if [[ -z $concurrent_users ]]; then
     echo "Please provide the number of concurrent users."
     exit 1
@@ -88,13 +83,13 @@ fi
 REPO_NAME="ballerina-performance-cloud"
 timestamp=$(date +%s)
 branch_name="nightly-$scenario_name-${timestamp}"
-git clone https://ballerina-bot:"$github_token"@github.com/ballerina-platform/"${REPO_NAME}"
 pushd "${REPO_NAME}"
 git checkout -b "${branch_name}"
 git config --global user.email "ballerina-bot@ballerina.org"
 git config --global user.name "ballerina-bot"
 git status
 git remote -v
+
 popd
 
 payload_flags=""
@@ -124,8 +119,15 @@ ls -ltr
 echo "--------Splitting Completed--------"
 
 echo "--------Generating CSV--------"
-JMeterPluginsCMD.sh --generate-csv summary.csv --input-jtl original-measurement.jtl --plugin-type AggregateReport
+sudo bash /base-image/apache-jmeter-4.0/bin/JMeterPluginsCMD.sh --generate-csv summary.csv --input-jtl original-measurement.jtl --plugin-type AggregateReport
 echo "--------CSV generated--------"
+
+cat summary.csv
+
+if [[ -z $github_token ]]; then
+    echo "Git Push Skipped"
+    exit 0
+fi
 
 echo "--------Merge CSV--------"
 create-csv.sh summary.csv ~/"${REPO_NAME}"/summary/"$scenario_name".csv "$payload_size" "$concurrent_users"
