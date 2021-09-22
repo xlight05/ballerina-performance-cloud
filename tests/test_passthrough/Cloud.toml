@@ -1,11 +1,11 @@
 [container.image]
-repository= "ballerina"
+repository= "xlight05"
 name="test_passthrough"
 
 [cloud.deployment]
-min_memory="1024Mi"
+min_memory="2048Mi"
 max_memory="2048Mi"
-min_cpu="800m"
+min_cpu="2000m"
 max_cpu="2000m"
 
 [cloud.deployment.autoscaling]
