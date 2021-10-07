@@ -119,7 +119,7 @@ ls -ltr
 echo "--------Splitting Completed--------"
 
 echo "--------Generating CSV--------"
-sudo bash /base-image/apache-jmeter-4.0/bin/JMeterPluginsCMD.sh --generate-csv summary.csv --input-jtl original-measurement.jtl --plugin-type AggregateReport
+sudo bash /base-image/apache-jmeter-5.4/bin/JMeterPluginsCMD.sh --generate-csv summary.csv --input-jtl original-measurement.jtl --plugin-type AggregateReport
 echo "--------CSV generated--------"
 
 cat summary.csv
