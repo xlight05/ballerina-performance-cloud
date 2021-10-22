@@ -1,0 +1,65 @@
+name: Clean test run docker
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: 'Cluster name'
+        default: 'bal-perf-cluster-test'
+        required: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        payload: [0]
+        users: [60]
+    env:
+      TEST_NAME: "go_test_hello"
+      TEST_ROOT: "tests"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    - name: Docker build
+      run: docker build -t ballerina/${TEST_NAME} ${TEST_ROOT}/${TEST_NAME}
+    - name: Docker push
+      run: docker push ballerina/${TEST_NAME}
+    - name: Configure AKS
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        cluster-name: '${{ github.event.inputs.clusterName }}'
+        resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+    - name: Deploy artifacts
+      run: |
+        kubectl apply -f ${TEST_ROOT}/${TEST_NAME}/k8s.yaml
+    - name: Login via Az module
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Write values to outputs
+      id: write
+      run: |
+        echo "::set-output name=cluster-ip::$(kubectl get service nginx-ingress-ingress-nginx-controller --namespace ingress-basic -w  \
+                                              -o 'go-template={{with .status.loadBalancer.ingress}}{{range .}}{{.ip}}{{"\n"}}{{end}}{{.err}}{{end}}' 2>/dev/null \
+                                              | head -n1)"
+        echo "::set-output name=scenario-name::${TEST_NAME}"
+        echo "::set-output name=vm-name::bal-perf-vm-`echo ${TEST_NAME} | tr '_' '-'`-${{ matrix.users }}-${{ matrix.payload }}-${{ GITHUB.RUN_NUMBER }}"
+        echo "::set-output name=custom-image-name::$(cat image.txt)"
+    - name: Wait for VM instance
+      run: sleep 60s
+      shell: bash
+
+    - name: Print outputs
+      run: |
+        wget https://gist.githubusercontent.com/xlight05/0fae16060f58e5e2714790f57b8d14ba/raw/c50eedbfb2b54a09903f75e9c3ec6b77712704ad/jk8s.yaml
+        sed -i -e 's/<<IP>>/${{ steps.write.outputs.cluster-ip }}/g' jk8s.yaml
+        cat jk8s.yaml
+        kubectl apply -f jk8s.yaml
+        while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
+        kubectl logs -f -l app="jmeter"
