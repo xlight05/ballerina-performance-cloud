@@ -54,7 +54,6 @@ jobs:
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
-
     - name: Print outputs
       run: |
         wget https://gist.githubusercontent.com/xlight05/0fae16060f58e5e2714790f57b8d14ba/raw/c50eedbfb2b54a09903f75e9c3ec6b77712704ad/jk8s.yaml
