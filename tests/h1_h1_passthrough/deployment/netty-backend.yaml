@@ -20,7 +20,6 @@ spec:
         env:
         - name: "SSL"
           value: "true"
-
 ---
 apiVersion: v1
 kind: Service
