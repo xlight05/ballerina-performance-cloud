@@ -9,9 +9,9 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        count: [1,2,3,4,5,6,7,8,9]
+        count: [6,7,8,9]
         payload: [50]
-        users: [5]
+        users: [10]
     timeout-minutes: 600
     env:
       TEST_NAME: "netty_hello"
@@ -31,7 +31,7 @@ jobs:
       run: |
         az aks create \
             --resource-group "${RESOURCE_GROUP}" \
-            --name bal-perf-low-${{ matrix.count }} \
+            --name bal-perf-med-${{ matrix.count }} \
             --service-principal "${AZURE_APP_ID}"\
             --client-secret "${AZURE_APP_PASSWORD}" \
             --node-vm-size "Standard_F16s_v2" \
@@ -46,7 +46,7 @@ jobs:
       uses: azure/aks-set-context@v1
       with:
         creds: '${{ secrets.AZURE_CREDENTIALS }}'
-        cluster-name: 'bal-perf-low-${{ matrix.count }}'
+        cluster-name: 'bal-perf-med-${{ matrix.count }}'
         resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
     - name: Deploy Niginx
       run: |
@@ -76,7 +76,7 @@ jobs:
       uses: azure/aks-set-context@v1
       with:
         creds: '${{ secrets.AZURE_CREDENTIALS }}'
-        cluster-name: 'bal-perf-low-${{ matrix.count }}'
+        cluster-name: 'bal-perf-med-${{ matrix.count }}'
         resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
     - name: Deploy artifacts
       run: |
