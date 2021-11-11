@@ -2,6 +2,11 @@ name: Test VM Create
 
 on:
   workflow_dispatch:
+    inputs:
+      vmName:
+        description: 'VM Name'
+        default: 'test-vm'
+        required: false
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -19,6 +24,32 @@ jobs:
       with:
         azcliversion: "agentazcliversion"
         inlineScript: |
-          az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "test-vm"  --admin-username "${{ secrets.VM_USER }}" --admin-password "${{ secrets.VM_PWD }}" --location  eastus \
-          --image "Canonical:UbuntuServer:18.04-LTS:latest" --size "Standard_F4s_v2"
-          echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "test-vm" --query publicIps -o tsv)"
+          az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "${{ github.event.inputs.vmName }}"  --admin-username "${{ secrets.VM_USER }}" --location  eastus \
+          --image "Canonical:UbuntuServer:18.04-LTS:latest" --size "Standard_F4s_v2" --generate-ssh-keys
+          echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "${{ github.event.inputs.vmName }}" --query publicIps -o tsv)"
+          ls -al ~/.ssh
+          chmod +x ~/.ssh/id_rsa
+          chmod 777 ~/.ssh/id_rsa
+          chmod +x ~/.ssh/id_rsa
+          chmod 777 ~/.ssh/id_rsa
+          cp ~/.ssh/id_rsa $GITHUB_WORKSPACE
+          cp ~/.ssh/id_rsa.pub $GITHUB_WORKSPACE
+          ls -al
+    - name: Create file
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ steps.vminstance.outputs.ip-address }}
+        username: ${{ secrets.VM_USER }}
+        key_path: 'id_rsa'
+        command_timeout: '180m' #3 hours
+        timeout: 300s #5 mins
+        script: |
+            echo "hello" > test1.txt
+    - name: copy file to host
+      run: |
+          ls -la
+          scp -v -o StrictHostKeyChecking=no -i id_rsa  ${{ secrets.VM_USER }}@${{ steps.vminstance.outputs.ip-address }}:test1.txt test1.txt
+    - name: Cat test
+      run: |
+          ls -la
+          cat test1.txt
