@@ -1,0 +1,24 @@
+name: Test VM Create
+
+on:
+  workflow_dispatch:
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: Login via Az module
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Create VM Instance
+      id: vminstance
+      uses: azure/CLI@v1
+      with:
+        azcliversion: "agentazcliversion"
+        inlineScript: |
+          az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "test-vm"  --admin-username "${{ secrets.VM_USER }}" --admin-password "${{ secrets.VM_PWD }}" --location  eastus \
+          --image "Canonical:UbuntuServer:18.04-LTS:latest" --size "Standard_F4s_v2"
+          echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "test-vm" --query publicIps -o tsv)"
