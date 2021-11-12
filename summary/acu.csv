@@ -1,4 +1,4 @@
-Label,# Samples,Average,Median,90% Line,95% Line,99% Line,Min,Max,Error %,Throughput,Received KB/sec,Std. Dev.,Date,Users
+Label,# Samples,Average,Median,90% Line,95% Line,99% Line,Min,Max,Error %,Throughput,Received KB/sec,Std. Dev.,Users
 HTTP Request,3689984,5,2,13,20,39,1,234,0.00%,3416.9,513.7,7.56,20
 HTTP Request,4617444,4,3,9,14,30,1,231,0.00%,4275.7,642.8,5.39,20
 HTTP Request,4585399,4,3,9,14,27,1,245,0.00%,4246.2,638.4,5.01,20
