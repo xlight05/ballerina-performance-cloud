@@ -53,3 +53,7 @@ jobs:
       run: |
           ls -la
           cat test1.txt
+    - uses: actions/upload-artifact@v2
+      with:
+        name: test1
+        path: test1.txt
