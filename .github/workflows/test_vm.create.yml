@@ -44,16 +44,17 @@ jobs:
         command_timeout: '180m' #3 hours
         timeout: 300s #5 mins
         script: |
-            echo "hello" > test1.txt
+            mkdir uploads
+            echo "hello" > uploads/test1.txt
     - name: copy file to host
       run: |
           ls -la
-          scp -v -o StrictHostKeyChecking=no -i id_rsa  ${{ secrets.VM_USER }}@${{ steps.vminstance.outputs.ip-address }}:test1.txt test1.txt
+          scp -r -v -o StrictHostKeyChecking=no -i id_rsa  ${{ secrets.VM_USER }}@${{ steps.vminstance.outputs.ip-address }}:uploads uploads
     - name: Cat test
       run: |
           ls -la
-          cat test1.txt
+          cat uploads/test1.txt
     - uses: actions/upload-artifact@v2
       with:
-        name: test1
-        path: test1.txt
+        name: Uploads
+        path: uploads

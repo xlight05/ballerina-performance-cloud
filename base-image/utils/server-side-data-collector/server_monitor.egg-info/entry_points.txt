@@ -1,0 +1,4 @@
+
+            [console_scripts]
+            server-monitor=application.cli_interface:main
+    

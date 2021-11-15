@@ -1,0 +1,32 @@
+name: Serverside stats gen
+
+on:
+  workflow_dispatch:
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        vm_count: [1, 2]
+    timeout-minutes: 600
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: Login via Az module
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Cat test
+      run: |
+          ls -la
+          mkdir uploads
+          results_dir=$(pwd)/"uploads/"
+          util_dir=$(pwd)/"base-image/utils/server-side-data-collector/"
+          bash base-image/utils/server-side-data-collector/generate-static-reports.sh ${{ secrets.CLIENT_ID }} ${{ secrets.CLIENT_SECRET }} "bal-perf-cluster-01" ${{ secrets.CLUSTER_RESOURCE_GROUP }} ${{ secrets.SUBSCRIPTION_ID }} ${util_dir} ${{ secrets.TENANT_ID }} ${results_dir} ${{ secrets.WORKSPACE_ID }} "2021-11-15T05:06" "2021-11-15T05:08"
+          echo "${{ matrix.vm_count }}" > $results_dir/test.txt
+    - uses: actions/upload-artifact@v2
+      with:
+        name: Uploads ${{ matrix.vm_count }}
+        path: uploads

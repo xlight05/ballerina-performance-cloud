@@ -106,13 +106,17 @@ fi
 
 echo "--------Running test $scenario_name--------"
 pushd "${REPO_NAME}"/tests/"$scenario_name"/scripts/
+start_time=$(date +%Y-%m-%dT%H:%M -u)
 chmod +x run.sh
 ./run.sh -s "$scenario_name" -u "$concurrent_users" -f "$payload_flags"
+end_time=$(date +%Y-%m-%dT%H:%M -u)
 popd
 echo "--------End test--------"
 
 echo "--------Processing Results--------"
 pushd "${REPO_NAME}"/tests/"$scenario_name"/results/
+echo $start_time > test_start_time_utc
+echo $end_time > test_end_time_utc
 echo "--------Splitting Results--------"
 jtl-splitter.sh -- -f original.jtl -t 120 -u SECONDS -s
 ls -ltr
@@ -121,6 +125,9 @@ echo "--------Splitting Completed--------"
 echo "--------Generating CSV--------"
 sudo bash /base-image/apache-jmeter-5.4/bin/JMeterPluginsCMD.sh --generate-csv summary.csv --input-jtl original-measurement.jtl --plugin-type AggregateReport
 echo "--------CSV generated--------"
+
+mkdir ~/uploads
+cp -r ~/"${REPO_NAME}"/tests/"$scenario_name"/results ~/uploads
 
 cat summary.csv
 
