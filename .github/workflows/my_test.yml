@@ -17,6 +17,8 @@ jobs:
       - name: Setup custom image
         id: image
         run: |
-          git checkout -b ${{ github.event.inputs.repo-name }}
-          git remote -v
-          git push origin ${{ github.event.inputs.repo-name }}
+          git clone https://xlight05:${{ secrets.GITHUB_TOKEN }}@github.com/xlight05/ballerina-performance-cloud
+          timestamp=$(date +%s -u)
+          branch_name="nightly-${timestamp}"
+          git checkout -b ${branch_name}
+          git push origin ${branch_name}
