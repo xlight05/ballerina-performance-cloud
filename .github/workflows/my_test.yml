@@ -1,4 +1,4 @@
-name: Stdlib Workflow
+name: Create branch test
 
 on:
   workflow_dispatch:
@@ -8,11 +8,6 @@ on:
           Name of the repo containing tests. Repo should be in ballerina-platform org.
           Example- module-ballerina-http
         required: true
-      tests:
-        description: >
-          Array of test names
-          Example-["hello world","h1_h1_passthrough"]
-        required: false
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -22,57 +17,6 @@ jobs:
       - name: Setup custom image
         id: image
         run: |
-          echo "::set-output name=custom-image-name::$(cat image.txt)"
-          cat image.txt
-      - name: Setup outputs
-        id: write
-        run: |
-          testsInput='${{ github.event.inputs.tests }}'
-          if [[ -z $testsInput ]]; then
-            repoName=${{ github.event.inputs.repo-name }}
-            git clone https://github.com/ballerina-platform/$repoName
-            if [[ -z $repoName ]]; then
-              echo "Github repo should be in `ballerina-platform` org"
-              exit 1
-            fi
-            cd $repoName/load-tests
-            tests=$(ls -d */ | cut -f1 -d'/' | jq -R -s -c 'split("\n")[:-1]')
-            echo "::set-output name=test::${tests}"
-          else
-            tests=$(echo $testsInput | jq '.')
-            if [[ -z $tests ]]; then
-              echo "Invalid json array input for tests"
-              exit 1
-            fi
-
-            if [[ $tests == "[]" ]]; then
-              echo "Empty test case array"
-              exit 1
-            fi
-            tests=${tests//$'\n'/}
-            echo "::set-output name=test::${tests}"
-          fi
-    outputs:
-      matrix: ${{ steps.write.outputs.test }}
-      custom-image-name: ${{ steps.image.outputs.custom-image-name }}
-  run_test:
-    needs: setup
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix:
-        test_name: ${{ fromJson(needs.setup.outputs.matrix) }}
-        payload: [50]
-        users: [60]
-    env:
-      TEST_NAME: "${{ matrix.test_name }}"
-      TEST_ROOT: "load-tests"
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        repository: ballerina-platform/${{ github.event.inputs.repo-name }}
-    - name: Write values to outputs
-      id: write
-      run: |
-        echo "::set-output name=custom-image-name::${{ needs.setup.outputs.custom-image-name }}"
-        echo ${{ needs.setup.outputs.custom-image-name }}
+          git checkout -b ${{ github.event.inputs.repo-name }}
+          git remote -v
+          git push origin ${{ github.event.inputs.repo-name }}
