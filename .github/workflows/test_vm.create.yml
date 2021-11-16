@@ -18,29 +18,19 @@ jobs:
       uses: azure/login@v1
       with:
         creds: ${{secrets.AZURE_CREDENTIALS}}
-    - name: Create VM Instance
-      id: vminstance
-      uses: azure/CLI@v1
+    - name: Install SSH key
+      uses: shimataro/ssh-key-action@v2
       with:
-        azcliversion: "agentazcliversion"
-        inlineScript: |
-          az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "${{ github.event.inputs.vmName }}"  --admin-username "${{ secrets.VM_USER }}" --location  eastus \
-          --image "Canonical:UbuntuServer:18.04-LTS:latest" --size "Standard_F4s_v2" --generate-ssh-keys
-          echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "${{ github.event.inputs.vmName }}" --query publicIps -o tsv)"
-          ls -al ~/.ssh
-          chmod +x ~/.ssh/id_rsa
-          chmod 777 ~/.ssh/id_rsa
-          chmod +x ~/.ssh/id_rsa
-          chmod 777 ~/.ssh/id_rsa
-          cp ~/.ssh/id_rsa $GITHUB_WORKSPACE
-          cp ~/.ssh/id_rsa.pub $GITHUB_WORKSPACE
-          ls -al
+        key: ${{ secrets.PRIVATE_KEY }}
+        name: id_rsa # optional
+        known_hosts: unnecessary
+        if_key_exists: replace # replace / ignore / fail; optional (defaults to fail)
     - name: Create file
       uses: appleboy/ssh-action@master
       with:
-        host: ${{ steps.vminstance.outputs.ip-address }}
+        host: ${{secrets.VM_IP}}
         username: ${{ secrets.VM_USER }}
-        key_path: 'id_rsa'
+        key: ${{ secrets.PRIVATE_KEY }}
         command_timeout: '180m' #3 hours
         timeout: 300s #5 mins
         script: |
@@ -49,12 +39,8 @@ jobs:
     - name: copy file to host
       run: |
           ls -la
-          scp -r -v -o StrictHostKeyChecking=no -i id_rsa  ${{ secrets.VM_USER }}@${{ steps.vminstance.outputs.ip-address }}:uploads uploads
+          scp -r -o StrictHostKeyChecking=no  ${{ secrets.VM_USER }}@${{ secrets.VM_IP }}:uploads uploads
     - name: Cat test
       run: |
           ls -la
           cat uploads/test1.txt
-    - uses: actions/upload-artifact@v2
-      with:
-        name: Uploads
-        path: uploads

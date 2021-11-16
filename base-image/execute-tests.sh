@@ -80,7 +80,10 @@ if [[ -z $concurrent_users ]]; then
     exit 1
 fi
 
+rm -rf ~/uploads
 REPO_NAME="ballerina-performance-cloud"
+rm -rf ~/"${REPO_NAME}"/tests/"$scenario_name"/results
+
 timestamp=$(date +%s)
 branch_name="nightly-$scenario_name-${timestamp}"
 pushd "${REPO_NAME}"
@@ -94,10 +97,14 @@ popd
 
 payload_flags=""
 
+sed '/bal\.perf\.test/d' /etc/hosts | sudo tee /etc/hosts
 echo "$cluster_ip bal.perf.test" | sudo tee -a /etc/hosts
+echo "hosts file"
+cat /etc/hosts
 
 if [[ $payload_size != "0" ]]; then
     echo "--------Generating $payload_size Payload--------"
+    rm -rf "$payload_size""B.json"
     generate-payloads.sh -p array -s "$payload_size"
     payload_flags+=" -Jresponse_size=$payload_size -Jpayload=$(pwd)/$payload_size""B.json"
     echo payload_flags
@@ -115,8 +122,8 @@ echo "--------End test--------"
 
 echo "--------Processing Results--------"
 pushd "${REPO_NAME}"/tests/"$scenario_name"/results/
-echo $start_time > test_start_time_utc
-echo $end_time > test_end_time_utc
+echo "$start_time" > test_start_time_utc
+echo "$end_time" > test_end_time_utc
 echo "--------Splitting Results--------"
 jtl-splitter.sh -- -f original.jtl -t 120 -u SECONDS -s
 ls -ltr
