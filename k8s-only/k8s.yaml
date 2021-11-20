@@ -1,0 +1,34 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  labels:
+    app: "jmeter"
+  name: "j-deployment"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "jmeter"
+  template:
+    metadata:
+      labels:
+        app: "jmeter"
+    spec:
+      containers:
+      - image: "xlight05/k8s-only:latest"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "sleep"
+              - "15"
+        name: "j-deployment"
+        env:
+        - name: CLUSTER_IP
+          value: <<IP>>
+        - name: SCENARIO_NAME
+          value: <<SCENARIO_NAME>>
+        - name: PAYLOAD_SIZE
+          value: "<<PAYLOAD_SIZE>>"
+        - name: USERS
+          value: "<<USERS>>"
