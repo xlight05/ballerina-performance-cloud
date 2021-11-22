@@ -9,9 +9,9 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        count: [6,7,8,9]
+        count: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22]
         payload: [50]
-        users: [10]
+        users: [1]
     timeout-minutes: 600
     env:
       TEST_NAME: "netty_hello"
@@ -28,6 +28,7 @@ jobs:
         AZURE_APP_ID: ${{ secrets.AZURE_APP_ID }}
         AZURE_APP_PASSWORD: ${{ secrets.AZURE_APP_PASSWORD }}
         RESOURCE_GROUP: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+        PPG_ID: "/subscriptions/${{ secrets.SUBSCRIPTION_ID }}/resourceGroups/ballerina-performance/providers/Microsoft.Compute/proximityPlacementGroups/${{ secrets.PPG_NAME }}"
       run: |
         az aks create \
             --resource-group "${RESOURCE_GROUP}" \
@@ -36,6 +37,7 @@ jobs:
             --client-secret "${AZURE_APP_PASSWORD}" \
             --node-vm-size "Standard_F16s_v2" \
             --node-osdisk-size 256 \
+            --ppg "${PPG_ID}" \
             --node-osdisk-type Managed \
             --node-count 1 \
             --location "eastus" \
@@ -94,6 +96,7 @@ jobs:
         echo "::set-output name=scenario-name::${TEST_NAME}"
         echo "::set-output name=vm-name::bal-perf-vm-`echo ${TEST_NAME} | tr '_' '-'`-${{ matrix.users }}-${{ matrix.payload }}-${{ GITHUB.RUN_NUMBER }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        echo "::set-output name=ppg-id::/subscriptions/${{ secrets.SUBSCRIPTION_ID }}/resourceGroups/ballerina-performance/providers/Microsoft.Compute/proximityPlacementGroups/${{ secrets.PPG_NAME }}"
     - name: Create VM Instance
       id: vminstance
       uses: azure/CLI@v1
@@ -101,7 +104,7 @@ jobs:
         azcliversion: "agentazcliversion"
         inlineScript: |
           az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "${{ steps.write.outputs.vm-name }}"  --admin-username "${{ secrets.VM_USER }}" --admin-password "${{ secrets.VM_PWD }}" --location  eastus \
-          --image "Canonical:UbuntuServer:18.04-LTS:latest" --tags benchmark-number=${{ steps.write.outputs.vm-name }} --size Standard_F4s_v2
+          --image "Canonical:UbuntuServer:18.04-LTS:latest" --tags benchmark-number=${{ steps.write.outputs.vm-name }} --size Standard_F4s_v2 --ppg ${{ steps.write.outputs.ppg-id }}
           echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "${{ steps.write.outputs.vm-name }}" --query publicIps -o tsv)"
     - name: Execute performance tests
       uses: appleboy/ssh-action@master
@@ -142,3 +145,11 @@ jobs:
           else
               echo "Disk is already deleted"
           fi
+    - name: Cleaning up the cluster
+      if: always()
+      uses: azure/CLI@v1
+      with:
+        azcliversion: "agentazcliversion"
+        inlineScript: |
+          az group delete --name mc_${{ secrets.CLUSTER_RESOURCE_GROUP }}_bal-perf-med-${{ matrix.count }}_eastus -y
+          az aks delete --name bal-perf-med-${{ matrix.count }} --resource-group ${{ secrets.CLUSTER_RESOURCE_GROUP }} -y
