@@ -18,7 +18,7 @@ jobs:
         users: [1]
     timeout-minutes: 600
     env:
-      TEST_NAME: "netty_hello"
+      TEST_NAME: "netty_process"
       TEST_ROOT: "tests"
     steps:
     - name: CHECKOUT

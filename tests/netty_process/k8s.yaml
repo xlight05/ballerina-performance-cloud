@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netty-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netty-backend
+  template:
+    metadata:
+      labels:
+        app: netty-backend
+    spec:
+      containers:
+      - name: netty-container
+        image: xlight05/netty-echo:latest
+        ports:
+        - containerPort: 8688
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+        env:
+        - name: "SSL"
+          value: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: netty-backend
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8688
+  selector:
+    app: netty-backend
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: netty-backend
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: bal.perf.test
+    http:
+      paths:
+      - path: "/"
+        pathType: Prefix
+        backend:
+          service:
+            name: netty-backend
+            port:
+              number: 8688
