@@ -23,6 +23,8 @@ scenario_name=""
 github_token=""
 payload_size="0"
 concurrent_users=""
+github_hook=""
+pat_token=""
 
 function usage() {
     echo ""
@@ -37,7 +39,7 @@ function usage() {
     echo ""
 }
 
-while getopts "c:s:t:p:u:h" opts; do
+while getopts "c:s:t:p:u:d:h" opts; do
     case $opts in
     c)
         cluster_ip=${OPTARG}
@@ -48,11 +50,17 @@ while getopts "c:s:t:p:u:h" opts; do
     t)
         github_token=${OPTARG}
         ;;
+    w)
+        pat_token=${OPTARG}
+        ;;
     p)
         payload_size=${OPTARG}
         ;;
     u)
         concurrent_users=${OPTARG}
+        ;;
+    d)
+        github_hook=${OPTARG}
         ;;
     h)
         usage
@@ -137,6 +145,37 @@ mkdir ~/uploads
 cp -r ~/"${REPO_NAME}"/tests/"$scenario_name"/results ~/uploads
 
 cat summary.csv
+
+if [[ ! -z $github_hook ]]; then
+    buildTime=`date +%s`
+    echo "CSV modification started"
+    # Append Date header
+    sed -i ' 1 s/.*/&,Date/' summary.csv
+    # Append Date value
+    sed -i " 2 s/.*/&,${buildTime}/" summary.csv
+    # Append Payload header
+    sed -i ' 1 s/.*/&,Payload/' summary.csv
+    # Append Payload value
+    sed -i " 2 s/.*/&,${payload_size}/" summary.csv
+    # Append Users header
+    sed -i ' 1 s/.*/&,Users/' summary.csv
+    # Append Users value
+    sed -i " 2 s/.*/&,${concurrent_users}/" summary.csv
+
+    STATUS="success"
+    SUMMARY_STRING=$(sed '3d' summary.csv)
+
+    DATA_STRING=$( jq -n \
+                  --arg status "$STATUS" \
+                  --arg summary "$SUMMARY_STRING" \
+                  '{"event_type": "build", "client_payload": { "status": $status, "result": $summary}}' )
+
+    curl -X POST \
+        -H "Accept: application/vnd.github.v3+json" \
+        -H "Authorization: token $pat_token" \
+        --data $DATA_STRING \
+        https://api.github.com/repos/xlight05/ballerina-performance-cloud/dispatches
+fi
 
 if [[ -z $github_token ]]; then
     echo "Git Push Skipped"

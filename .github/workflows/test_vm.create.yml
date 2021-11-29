@@ -5,7 +5,7 @@ on:
     inputs:
       vmName:
         description: 'VM Name'
-        default: 'test-vm'
+        default: ''
         required: false
 jobs:
   setup:
@@ -14,33 +14,6 @@ jobs:
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
-    - name: Login via Az module
-      uses: azure/login@v1
-      with:
-        creds: ${{secrets.AZURE_CREDENTIALS}}
-    - name: Install SSH key
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.PRIVATE_KEY }}
-        name: id_rsa # optional
-        known_hosts: unnecessary
-        if_key_exists: replace # replace / ignore / fail; optional (defaults to fail)
-    - name: Create file
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{secrets.VM_IP}}
-        username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.PRIVATE_KEY }}
-        command_timeout: '180m' #3 hours
-        timeout: 300s #5 mins
-        script: |
-            mkdir uploads
-            echo "hello" > uploads/test1.txt
     - name: copy file to host
       run: |
-          ls -la
-          scp -r -o StrictHostKeyChecking=no  ${{ secrets.VM_USER }}@${{ secrets.VM_IP }}:uploads uploads
-    - name: Cat test
-      run: |
-          ls -la
-          cat uploads/test1.txt
+        echo "${{ github.event.inputs.vmName }}"
