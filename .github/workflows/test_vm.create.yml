@@ -14,6 +14,42 @@ jobs:
     steps:
     - name: CHECKOUT
       uses: actions/checkout@v2
-    - name: copy file to host
+    - name: Write values to outputs
+      id: write
       run: |
-        echo "${{ github.event.inputs.vmName }}"
+        dispatchType='${{ github.event.inputs.vmName }}'
+          if [[ -z $dispatchType ]]; then
+            repoName=${{ github.event.inputs.repo-name }}
+            git clone https://github.com/ballerina-platform/module-ballerina-docker remote_repo
+            cd remote_repo
+            timestamp=$(date +%s -u)
+            branch_name="nightly-${timestamp}"
+            git checkout -b ${branch_name}
+            # git push origin ${branch_name}
+            echo "::set-output name=branch-name::${branch_name}"
+          fi
+        echo "::set-output name=dispatch-type::${{ github.event.inputs.vmName }}"
+    - name: Execute performance tests
+      uses: appleboy/ssh-action@master
+      env:
+        REPO_NAME: "module-ballerina-docker"
+        IP: "1.2.3.4"
+        SCENARIO_NAME: "hello"
+        GITHUB_TOKEN: "hello"
+        SPACE_ID: "hello"
+        MESSAGE_KEY: "hello"
+        CHAT_TOKEN: "hello"
+        PAYLOAD: 0
+        USERS: 50
+        BRANCH: ${{steps.write.outputs.branch-name}}
+        WORKFLOW_TYPE: ${{steps.write.outputs.dispatch-type}}
+      with:
+        host: "40.121.12.62"
+        username: ${{ secrets.VM_USER }}
+        password: ${{ secrets.VM_PWD }}
+        envs: REPO_NAME,IP,SCENARIO_NAME,GITHUB_TOKEN,PAYLOAD,USERS,SPACE_ID,MESSAGE_KEY,CHAT_TOKEN,BRANCH, WORKFLOW_TYPE
+        command_timeout: '180m' #3 hours
+        timeout: 300s #5 mins
+        script: |
+          source /etc/profile.d/10-perf-vm.sh
+          execute-tests.sh -r $REPO_NAME -c $IP -s $SCENARIO_NAME -t $GITHUB_TOKEN -p $PAYLOAD -u $USERS -i $SPACE_ID -m $MESSAGE_KEY -a $CHAT_TOKEN -b ${BRANCH:-""} -d ${WORKFLOW_TYPE:-""}
