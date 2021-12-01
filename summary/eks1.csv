@@ -1,5 +1,4 @@
 Label,# Samples,Average,Median,90% Line,95% Line,99% Line,Min,Max,Error %,Throughput,Received KB/sec,Std. Dev.
-HTTP Request,716522,1,1,1,2,3,0,1021,0.00%,918.7,88.8,3.19
 HTTP Request,723586,1,1,1,2,3,0,1024,0.00%,927.8,89.7,2.73
 HTTP Request,716522,1,1,1,2,3,0,1021,0.00%,918.7,88.8,3.19
 HTTP Request,716131,1,1,1,2,3,0,904,0.00%,918.2,88.7,2.09
