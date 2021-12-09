@@ -1,0 +1,47 @@
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  labels:
+    app: "sock_server"
+  name: "sock-server"
+spec:
+  ports:
+  - name: "port-1-sock"
+    port: 1111
+    protocol: "TCP"
+    targetPort: 1111
+  selector:
+    app: "sock_server"
+  type: "LoadBalancer"
+---
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata:
+  labels:
+    app: "sock_server"
+  name: "sock-perf-deployment"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "sock_server"
+  template:
+    metadata:
+      labels:
+        app: "sock_server"
+    spec:
+      containers:
+      - image: "xlight05/sockperf-server:latest"
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - "sleep"
+              - "15"
+        name: "sock-perf-deployment"
+        ports:
+        - containerPort: 1111
+          name: "port-1-sock"
+          protocol: "TCP"
+      nodeSelector: {}
