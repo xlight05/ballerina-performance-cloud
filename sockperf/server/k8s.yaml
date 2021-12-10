@@ -45,4 +45,11 @@ spec:
         - containerPort: 11111
           name: "port-1-sock"
           protocol: "TCP"
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
       nodeSelector: {}

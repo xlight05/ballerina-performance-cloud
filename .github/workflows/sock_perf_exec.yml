@@ -13,7 +13,7 @@ jobs:
       max-parallel: 1
       fail-fast: false
       matrix:
-        vm_count: [1 ]
+        vm_count: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 ]
     timeout-minutes: 600
     env:
       TEST_NAME: "netty_hello"
@@ -52,7 +52,7 @@ jobs:
         azcliversion: "agentazcliversion"
         inlineScript: |
           az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "${{ steps.write.outputs.vm-name }}"  --admin-username "${{ secrets.VM_USER }}" --location  eastus \
-          --image "Canonical:0001-com-ubuntu-server-focal:20_04-lts:latest" --tags benchmark-number=${{ steps.write.outputs.vm-name }} --size Standard_F16s_v2 --ppg ${{ steps.write.outputs.ppg-id }}  --generate-ssh-keys --accelerated-networking true
+          --image "Canonical:0001-com-ubuntu-server-focal:20_04-lts:latest" --tags benchmark-number=${{ steps.write.outputs.vm-name }} --size Standard_D16_v5 --ppg ${{ steps.write.outputs.ppg-id }}  --generate-ssh-keys --accelerated-networking true
           echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "${{ steps.write.outputs.vm-name }}" --query publicIps -o tsv)"
           chmod +x ~/.ssh/id_rsa
           chmod 777 ~/.ssh/id_rsa
