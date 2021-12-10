@@ -31,7 +31,7 @@ jobs:
             --service-principal "${CLIENT_ID}"\
             --client-secret "${CLIENT_SECRET}" \
             --ppg "${PPG_ID}" \
-            --node-vm-size "Standard_D16_v5" \
+            --node-vm-size "Standard_F16s_v2" \
             --node-osdisk-size 256 \
             --node-osdisk-type Managed \
             --node-count 1 \
