@@ -8,9 +8,9 @@ metadata:
 spec:
   ports:
   - name: "port-1-sock"
-    port: 1111
+    port: 11111
     protocol: "TCP"
-    targetPort: 1111
+    targetPort: 11111
   selector:
     app: "sock_server"
   type: "LoadBalancer"
@@ -33,6 +33,7 @@ spec:
     spec:
       containers:
       - image: "xlight05/sockperf-server:latest"
+        imagePullPolicy: Always
         lifecycle:
           preStop:
             exec:
@@ -41,7 +42,7 @@ spec:
               - "15"
         name: "sock-perf-deployment"
         ports:
-        - containerPort: 1111
+        - containerPort: 11111
           name: "port-1-sock"
           protocol: "TCP"
       nodeSelector: {}

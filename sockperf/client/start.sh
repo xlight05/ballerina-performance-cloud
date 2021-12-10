@@ -19,11 +19,8 @@
 set -e
 
 cluster_ip="${CLUSTER_IP}"
+echo "Cluster ip "
+echo $cluster_ip
 
-sed '/bal\.perf\.test/d' /etc/hosts | sudo tee /etc/hosts
-echo "$cluster_ip bal.perf.test" | sudo tee -a /etc/hosts
-echo "hosts file"
-cat /etc/hosts
-
-sockperf ping-pong -i 10.240.0.163 -t 60 --msg-size 1400 –tcp
+sockperf ping-pong -i "$cluster_ip" -t 60 --msg-size 1400 –tcp
 

@@ -13,4 +13,6 @@ RUN apt update && apt install -y iputils-ping net-tools sockperf
 
 WORKDIR /home/root
 
+EXPOSE 11111
+
 CMD sockperf server --tcp
