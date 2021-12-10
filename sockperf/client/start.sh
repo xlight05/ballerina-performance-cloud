@@ -22,5 +22,6 @@ cluster_ip="${CLUSTER_IP}"
 echo "Cluster ip "
 echo $cluster_ip
 
-sockperf ping-pong -i "$cluster_ip" -t 60 --msg-size 1400 –tcp
+sockperf ping-pong -i "$cluster_ip" -t 600 --msg-size 1400 --tcp
 
+sockperf tp -i "$cluster_ip" -t 600 --msg-size 1400 --tcp
