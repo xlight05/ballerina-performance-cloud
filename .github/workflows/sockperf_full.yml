@@ -1,0 +1,147 @@
+name: sockperf Full
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: 'Cluster name'
+        default: 'bal-perf-cluster-test'
+        required: false
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        vm_count: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17 ]
+        payload: [50]
+        users: [1]
+    timeout-minutes: 600
+    env:
+      TEST_NAME: "netty_hello_sock"
+      TEST_ROOT: "tests"
+    steps:
+    - name: CHECKOUT
+      uses: actions/checkout@v2
+    - name: AZURE LOGIN
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    - name: Configure AKS
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        cluster-name: '${{ github.event.inputs.clusterName }}'
+        resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+    - name: Deploy sockperf server
+      run: |
+        kubectl apply -f sockperf/server/k8s.yaml
+    - name: Deploy artifacts
+      run: |
+        kubectl apply -f ${TEST_ROOT}/${TEST_NAME}/k8s.yaml
+    - name: Login via Az module
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Wait for VM instance
+      run: sleep 90s
+      shell: bash
+    - name: Write values to outputs
+      id: write
+      run: |
+        echo "::set-output name=sock-ip::$(kubectl get svc sock-server -o jsonpath='{..ip}')"
+        echo "::set-output name=app-ip::$(kubectl get svc netty-backend -o jsonpath='{..ip}')"
+        echo "::set-output name=scenario-name::${TEST_NAME}"
+        echo "::set-output name=vm-name::perf-`echo ${TEST_NAME} | tr '_' '-'`-${{ matrix.users }}-${{ matrix.payload }}-${{ GITHUB.RUN_NUMBER }}-${{ matrix.vm_count }}"
+        echo "::set-output name=custom-image-name::$(cat image.txt)"
+        echo "::set-output name=ppg-id::/subscriptions/${{ secrets.SUBSCRIPTION_ID }}/resourceGroups/ballerina-performance/providers/Microsoft.Compute/proximityPlacementGroups/${{ secrets.PPG_NAME }}"
+    - name: Create VM Instance
+      id: vminstance
+      uses: azure/CLI@v1
+      with:
+        azcliversion: "agentazcliversion"
+        inlineScript: |
+          az vm create --resource-group "${{ secrets.CLUSTER_RESOURCE_GROUP }}"  --name "${{ steps.write.outputs.vm-name }}"  --admin-username "${{ secrets.VM_USER }}" --location  eastus \
+          --image "Canonical:0001-com-ubuntu-server-focal:20_04-lts:latest" --tags benchmark-number=${{ steps.write.outputs.vm-name }} --size Standard_D16s_v5 --ppg ${{ steps.write.outputs.ppg-id }}  --generate-ssh-keys --accelerated-networking true
+          echo "::set-output name=ip-address::$(az vm show -d -g "${{ secrets.CLUSTER_RESOURCE_GROUP }}" -n "${{ steps.write.outputs.vm-name }}" --query publicIps -o tsv)"
+          chmod +x ~/.ssh/id_rsa
+          chmod 777 ~/.ssh/id_rsa
+          chmod +x ~/.ssh/id_rsa
+          chmod 777 ~/.ssh/id_rsa
+          cp ~/.ssh/id_rsa $GITHUB_WORKSPACE
+          cp ~/.ssh/id_rsa.pub $GITHUB_WORKSPACE
+    - name: Execute performance tests
+      uses: appleboy/ssh-action@master
+      env: 
+        SOCK_IP: ${{ steps.write.outputs.sock-ip }}
+        APP_IP: ${{ steps.write.outputs.app-ip }}
+        SCENARIO_NAME: ${{ steps.write.outputs.scenario-name }}
+        PAYLOAD: ${{ matrix.payload }}
+        USERS: ${{ matrix.users }}
+      with:
+        host: ${{ steps.vminstance.outputs.ip-address }}
+        username: ${{ secrets.VM_USER }}
+        key_path: 'id_rsa'
+        envs: SOCK_IP,APP_IP,SCENARIO_NAME,PAYLOAD,USERS
+        command_timeout: '180m' #3 hours
+        timeout: 300s #5 mins
+        script: |
+          echo $SOCK_IP
+          echo $APP_IP
+          git clone https://github.com/xlight05/ballerina-performance-cloud
+          rm -rf ballerina-performance-cloud/base-image
+          mv ballerina-performance-cloud/sockperf-full ballerina-performance-cloud/base-image
+          sudo cp -r ballerina-performance-cloud/base-image /
+          sudo chmod -R 777 /base-image
+          sh /base-image/init.sh
+          source /etc/profile.d/10-perf-vm.sh
+          execute-tests.sh -c $SOCK_IP -a $APP_IP -s $SCENARIO_NAME -p $PAYLOAD -u $USERS
+    - name: copy file to host
+      run: |
+          ls -la
+          scp -r -v -o StrictHostKeyChecking=no -i id_rsa  ${{ secrets.VM_USER }}@${{ steps.vminstance.outputs.ip-address }}:uploads uploads
+    - name: Gather Serverside metrics
+      run: |
+          sudo chmod -R 777 $(pwd)/"uploads"
+          results_dir=$(pwd)/"uploads/results"
+          echo ${results_dir}
+          ls -la ${results_dir}
+          sudo rm ${results_dir}/original-warmup.jtl
+          sudo rm ${results_dir}/original-measurement.jtl
+          pwd
+          start_time=$(cat ${results_dir}/test_start_time_utc)
+          end_time=$(cat ${results_dir}/test_end_time_utc)
+          util_dir=$(pwd)/"base-image/utils/server-side-data-collector/"
+          bash base-image/utils/server-side-data-collector/generate-static-reports.sh ${{ secrets.CLIENT_ID }} ${{ secrets.CLIENT_SECRET }} "${{ github.event.inputs.clusterName }}" ${{ secrets.CLUSTER_RESOURCE_GROUP }} ${{ secrets.SUBSCRIPTION_ID }} ${util_dir} ${{ secrets.TENANT_ID }} ${results_dir} ${{ secrets.WORKSPACE_ID }} ${start_time} ${end_time}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ github.event.inputs.clusterName }}-${{ matrix.vm_count }}
+        path: uploads/results
+    - name: Undeploy artifacts
+      if: always()
+      run: |
+        kubectl delete -f ${TEST_ROOT}/${TEST_NAME}/k8s.yaml
+    - name: Undeploy sockperf server
+      if: always()
+      run: |
+        kubectl delete -f sockperf/server/k8s.yaml
+    - name: Cleanup VM
+      if: always()
+      continue-on-error: true
+      uses: azure/CLI@v1
+      with:
+        azcliversion: "agentazcliversion"
+        inlineScript: |
+          az resource delete --ids $(az resource list --tag benchmark-number=${{ steps.write.outputs.vm-name }} -otable --query "[].id" -otsv)
+          var=`az disk list --query "[?tags.\"benchmark-number\"=='${{ steps.write.outputs.vm-name }}'].id" -otable -otsv`
+          if [ -n "$var" ]
+          then
+              az resource delete --ids ${var}
+          else
+              echo "Disk is already deleted"
+          fi
