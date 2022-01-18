@@ -1,0 +1,118 @@
+name: Notify workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      clusterName:
+        description: 'Cluster name'
+        default: 'bal-perf-cluster-test'
+        required: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Login via Az module
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    - name: Create Cluster
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        RESOURCE_GROUP: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+      run: |
+        az aks create \
+            --resource-group "${RESOURCE_GROUP}" \
+            --name "${{ github.event.inputs.clusterName }}" \
+            --service-principal "${CLIENT_ID}"\
+            --client-secret "${CLIENT_SECRET}" \
+            --node-vm-size "Standard_F16s_v2" \
+            --node-osdisk-size 256 \
+            --node-osdisk-type Managed \
+            --node-count 1 \
+            --location "eastus" \
+            --generate-ssh-keys
+    - name: Configure AKS
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        cluster-name: '${{ github.event.inputs.clusterName }}'
+        resource-group: ${{ secrets.CLUSTER_RESOURCE_GROUP }}
+    - name: Deploy Niginx
+      run: |
+        # Create a namespace for your ingress resources
+        kubectl create namespace ingress-basic
+
+        # Add the ingress-nginx repository
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+
+        # Use Helm to deploy an NGINX ingress controller
+        helm install nginx-ingress ingress-nginx/ingress-nginx \
+            --namespace ingress-basic \
+            --set controller.replicaCount=2 \
+            --set controller.nodeSelector."beta\.kubernetes\.io/os"=linux \
+            --set defaultBackend.nodeSelector."beta\.kubernetes\.io/os"=linux \
+            --set controller.admissionWebhooks.patch.nodeSelector."beta\.kubernetes\.io/os"=linux
+        # Wait for ingress ip
+        kubectl get service nginx-ingress-ingress-nginx-controller --namespace ingress-basic -w  \
+        -o 'go-template={{with .status.loadBalancer.ingress}}{{range .}}{{.ip}}{{"\n"}}{{end}}{{.err}}{{end}}' 2>/dev/null \
+        | head -n1
+    - name: Deploy artifacts
+      run: |
+        kubectl apply -f volume-result/k8s.yaml
+    - name: Deploy collector
+      run: |
+        kubectl apply -f volume-result/logs.yaml
+    - name: Wait for VM instance
+      run: sleep 60s
+      shell: bash
+    - name: get pods
+      run: |
+        kubectl get pods
+    - name: Send dispatch
+      if: always()
+      run: |
+        kubectl cp dataaccess:/data data/
+        DISPATCH_TYPE="perf" #todo fix
+
+        pushd data
+        CONTENT=$(for SCENARIO_NAME in *; do 
+
+        STATUS="success"
+        SUMMARY_STRING=$(cat $SCENARIO_NAME/summary.csv)
+        ERROR_RATE=$(echo $SUMMARY_STRING | cut -d ',' -f10)
+        ERROR_RATE=$(echo $ERROR_RATE | sed 's/%//')
+        ERROR_RATE_LIMIT="5.00"
+        if [ 1 -eq "$(echo "${ERROR_RATE} > ${ERROR_RATE_LIMIT}" | bc)" ]; then
+            STATUS="failed"
+        fi
+        DATA_STRING=$( jq -n \
+                        --arg status "$STATUS" \
+                        --arg summary "$SUMMARY_STRING" \
+                        --arg errorRate "$ERROR_RATE" \
+                        --arg scenarioName "${SCENARIO_NAME}" \
+                        '{ "name": $scenarioName, "status": $status, "result": $summary, "errorRate": $errorRate}' )
+
+        echo $DATA_STRING
+
+        done | jq -n '.result |= [inputs]')
+        # echo $CONTENT
+
+        FINAL_PAYLOAD=$( jq -n \
+                        --argjson content "${CONTENT}" \
+                        --arg eventType "${DISPATCH_TYPE}" \
+                        '{"event_type": $eventType, "client_payload": $content }' )
+        echo $FINAL_PAYLOAD
+
+        curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.BALLERINA_BOT_TOKEN }}" \
+            --data "$FINAL_PAYLOAD" \
+            "https://api.github.com/repos/ballerina-platform/module-ballerina-docker/dispatches"
+
+        popd
+    - name: Undeploy Kubernetes artifacts
+      if: always()
+      run: |
+        kubectl delete -f volume-result/k8s.yaml
