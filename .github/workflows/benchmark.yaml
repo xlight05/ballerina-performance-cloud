@@ -9,10 +9,14 @@ jobs:
     steps:
     - name: Prints payload
       run: |
-    
-
-        result1="{{ github.event.client_payload.result }}"
-        echo $result1
+        echo "${{fromJson(github.event.client_payload.results)}}"
+        # res2="${{ fromJSON(github.event.client_payload.results) }}"
+        # echo $res2
+        # echo $json_var
+        # echo $json_var | jq '.[].status'
+        # # result1="${{ github.event.client_payload.results }}"
+        # # echo $result1
         
-        results="join(${{ github.event.client_payload.result }}, ',')"
-        echo $results
+        
+        # results='${{ join(github.event.client_payload.results, ',') }}'
+        # echo $results
