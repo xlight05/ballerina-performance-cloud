@@ -1,7 +1,16 @@
 name: Very test workflow
 on:
   workflow_dispatch:
-
+    inputs:
+      repo-name:
+        description: >
+          Name of the repo containing tests. Repo should be in ballerina-platform org.
+          Example- module-ballerina-http
+        required: true
+      dispatchType:
+        description: 'Repository dispatch type'
+        default: ''
+        required: false
 jobs:
 
   setup:
@@ -9,15 +18,54 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.value }}
     steps:
-      - id: matrix
-        run: |
-          echo '::set-output name=value::[\"a\", \"b\", \"c\"]'
-  build:
-    needs: [ setup ]
-    runs-on: ubuntu-latest
-    steps:
-    - name: use output
+    - name: Deploy data collector pod
+      shell: bash
+      if: always()
       run: |
-        echo $json_var
-      env:
-        json_var: ${{ needs.setup.outputs.matrix}}
+        mkdir data
+        mkdir data/project-1
+        mkdir data/project-2
+        mkdir data/project-3
+        echo "HTTP Request,3377166,63,13,283,326,349,0,1025,0.00%,3127.3,3731.8,101.75,1642319492,1024,50" > data/project-1/summary.csv
+        echo "HTTP Request,3377166,63,13,283,326,349,0,1025,0.00%,3127.3,3731.8,101.75,1642319492,1024,100" > data/project-2/summary.csv
+        echo "HTTP Request,3377166,63,13,283,326,349,0,1025,0.00%,3127.3,3731.8,101.75,1642319492,1024,200" > data/project-3/summary.csv
+
+        ls data/
+        ls data/project-1
+        DISPATCH_TYPE="${{ github.event.inputs.dispatchType }}"
+
+        pushd data
+        CONTENT=$(for SCENARIO_NAME in *; do 
+
+        STATUS="success"
+        SUMMARY_STRING=$(cat $SCENARIO_NAME/summary.csv)
+        ERROR_RATE=$(echo $SUMMARY_STRING | cut -d ',' -f10)
+        ERROR_RATE=$(echo $ERROR_RATE | sed 's/%//')
+        ERROR_RATE_LIMIT="5.00"
+        if [ 1 -eq "$(echo "${ERROR_RATE} > ${ERROR_RATE_LIMIT}" | bc)" ]; then
+            STATUS="failed"
+        fi
+        DATA_STRING=$( jq -n \
+                        --arg status "$STATUS" \
+                        --arg summary "$SUMMARY_STRING" \
+                        --arg errorRate "$ERROR_RATE" \
+                        --arg scenarioName "${SCENARIO_NAME}" \
+                        '{ "name": $scenarioName, "status": $status, "result": $summary, "errorRate": $errorRate}' )
+
+        echo $DATA_STRING
+
+        done | jq -n '.results |= [inputs]')
+
+        FINAL_PAYLOAD=$( jq -n \
+                        --argjson content "${CONTENT}" \
+                        --arg eventType "${DISPATCH_TYPE}" \
+                        '{"event_type": $eventType, "client_payload": $content }' )
+        echo $FINAL_PAYLOAD
+
+        curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.BALLERINA_BOT_TOKEN }}" \
+            --data "$FINAL_PAYLOAD" \
+            "https://api.github.com/repos/ballerina-platform/${{ github.event.inputs.repo-name }}/dispatches"
+
+        popd
