@@ -1,0 +1,23 @@
+name: Very test workflow
+on:
+  workflow_dispatch:
+
+jobs:
+
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - id: matrix
+        run: |
+          echo '::set-output name=value::[\"a\", \"b\", \"c\"]'
+  build:
+    needs: [ setup ]
+    runs-on: ubuntu-latest
+    steps:
+    - name: use output
+      run: |
+        echo $json_var
+      env:
+        json_var: ${{ needs.setup.outputs.matrix}}
