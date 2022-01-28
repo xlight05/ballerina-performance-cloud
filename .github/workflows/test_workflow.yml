@@ -1,0 +1,42 @@
+name: Test workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      zipURL:
+        description: 'Ballerina Zip Distribution URL'
+        required: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Ballerina Build from Distribution ZIP
+      id: zip
+      if: ${{ github.event.inputs.zipURL != '' }}
+      run: |
+        wget -c ${{ github.event.inputs.zipURL }}
+        filename=$(basename -- "${{ github.event.inputs.zipURL }}")
+        filename="${filename%.*}"
+        echo "Distribution: ${filename}"
+        unzip -q ${filename}.zip
+        export CI_BUILD=true
+        export BAL_PATH=`pwd`/${filename}
+        $BAL_PATH/bin/bal version > tmp1.txt
+        version_out=$(cat tmp1.txt | head -n 1)
+        echo "::set-output name=version::${version_out}"
+    - name: Write values to outputs
+      id: write
+      run: |
+        if [[ -z "${{steps.zip.outputs.version}}" ]]; then
+          docker run --entrypoint "/ballerina/runtime/bin/bal" ballerina/ballerina:nightly "version" > tmp.txt
+          version_out=$(cat tmp.txt | head -n 1)
+          echo "Nightly"
+        else 
+          version_out="${{steps.zip.outputs.version}}"
+          echo "Custom"
+        fi
+        echo "::set-output name=version::${version_out}"
+    - name: Deploy Jmeter container
+      run: |
+        echo "${{steps.write.outputs.version}}"

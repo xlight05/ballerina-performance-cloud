@@ -202,7 +202,7 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
-        version_out="Python 3.8"
+        version_out=""
         echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
@@ -220,7 +220,7 @@ jobs:
         sed -i -e 's/<<DISPATCH_TYPE>>//g' base-image/k8s.yaml
         sed -i -e 's/<<BRANCH_NAME>>//g' base-image/k8s.yaml
         sed -i -e 's/<<CONCURRENT_USERS>>/${{ matrix.users }}/g' base-image/k8s.yaml
-
+        sed -i -e 's/<<VERSION>>/${{ steps.write.outputs.version }}/g' base-image/k8s.yaml
         kubectl apply -f base-image/k8s.yaml
         while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
         kubectl logs -f -l app="jmeter"
@@ -300,7 +300,7 @@ jobs:
         sed -i -e 's/<<DISPATCH_TYPE>>//g' base-image/k8s.yaml
         sed -i -e 's/<<BRANCH_NAME>>//g' base-image/k8s.yaml
         sed -i -e 's/<<CONCURRENT_USERS>>/${{ matrix.users }}/g' base-image/k8s.yaml
-
+        sed -i -e 's/<<VERSION>>/${{ steps.write.outputs.version }}/g' base-image/k8s.yaml
         kubectl apply -f base-image/k8s.yaml
         while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
         kubectl logs -f -l app="jmeter"
@@ -380,7 +380,7 @@ jobs:
         sed -i -e 's/<<DISPATCH_TYPE>>//g' base-image/k8s.yaml
         sed -i -e 's/<<BRANCH_NAME>>//g' base-image/k8s.yaml
         sed -i -e 's/<<CONCURRENT_USERS>>/${{ matrix.users }}/g' base-image/k8s.yaml
-
+        sed -i -e 's/<<VERSION>>/${{ steps.write.outputs.version }}/g' base-image/k8s.yaml
         kubectl apply -f base-image/k8s.yaml
         while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
         kubectl logs -f -l app="jmeter"
@@ -460,7 +460,7 @@ jobs:
         sed -i -e 's/<<DISPATCH_TYPE>>//g' base-image/k8s.yaml
         sed -i -e 's/<<BRANCH_NAME>>//g' base-image/k8s.yaml
         sed -i -e 's/<<CONCURRENT_USERS>>/${{ matrix.users }}/g' base-image/k8s.yaml
-
+        sed -i -e 's/<<VERSION>>/${{ steps.write.outputs.version }}/g' base-image/k8s.yaml
         kubectl apply -f base-image/k8s.yaml
         while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
         kubectl logs -f -l app="jmeter"
@@ -540,7 +540,7 @@ jobs:
         sed -i -e 's/<<DISPATCH_TYPE>>//g' base-image/k8s.yaml
         sed -i -e 's/<<BRANCH_NAME>>//g' base-image/k8s.yaml
         sed -i -e 's/<<CONCURRENT_USERS>>/${{ matrix.users }}/g' base-image/k8s.yaml
-
+        sed -i -e 's/<<VERSION>>/${{ steps.write.outputs.version }}/g' base-image/k8s.yaml
         kubectl apply -f base-image/k8s.yaml
         while [[ $(kubectl get pods -l app=jmeter -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do echo "waiting for pod" && sleep 1; done
         kubectl logs -f -l app="jmeter"
