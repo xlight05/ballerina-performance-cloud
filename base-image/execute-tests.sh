@@ -47,7 +47,7 @@ if [[ -z ${concurrent_users} ]]; then
     exit 1
 fi
 
-git clone https://ballerina-bot:"${GITHUB_TOKEN}"@github.com/ballerina-platform/"${REPO_NAME}"
+git clone https://xlight05:"${GITHUB_TOKEN}"@github.com/xlight05/"${REPO_NAME}"
 pushd "${REPO_NAME}"
 
 if [[ -z $branch_name ]]; then
@@ -140,6 +140,7 @@ else
     echo "--------Committing CSV--------"
     pushd "${REPO_NAME}"
     git clean -xfd
+    cat load-tests/"${SCENARIO_NAME}"/results/summary.csv
     git add load-tests/"${SCENARIO_NAME}"/results/summary.csv
     git commit -m "Update ${SCENARIO_NAME} test results on $(date)"
     git push origin "${branch_name}"
