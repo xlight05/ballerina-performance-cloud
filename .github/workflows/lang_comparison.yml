@@ -202,6 +202,8 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        version_out="Python 3.8"
+        echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
@@ -280,6 +282,8 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        version_out="Python 3.8"
+        echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
@@ -358,6 +362,8 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        version_out="Node 14"
+        echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
@@ -436,6 +442,8 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        version_out="Node 14"
+        echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
@@ -514,6 +522,8 @@ jobs:
         echo "::set-output name=message-key::${{ secrets.MESSAGE_KEY }}"
         echo "::set-output name=chat-token::${{ secrets.CHAT_TOKEN }}"
         echo "::set-output name=custom-image-name::$(cat image.txt)"
+        version_out="Go 1.17.6"
+        echo "::set-output name=version::${version_out}"
     - name: Wait for VM instance
       run: sleep 60s
       shell: bash
